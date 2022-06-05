@@ -1,0 +1,8 @@
+venv
+*.pyc
+**/migrations/
+**/**/migrations/
+.idea
+.vscode
+**/__init__.py
+frontend
