@@ -1,7 +1,6 @@
-import datetime
+from rest_framework import status
 
 from .serializer import *
-from rest_framework import status
 
 
 def get_leaves_by_token(token):
@@ -9,36 +8,53 @@ def get_leaves_by_token(token):
         leaves_record = {}
         token = AuthToken.objects.get(token=token)
         user = Users.objects.get(id=token.users.id)
-        employee = Employee.objects.get(user_id=user.id)
-        req_leaves = RequestedLeaves.objects.filter(eid=employee.eid).all()
+        if user.user_role_id == 2:
+            manager = Manager.objects.get(mid=user.id)
+            emps = Employee.objects.filter(rep_manager_id_id=manager.id)
+            req_leaves = []
+            for emp in emps:
+                ls = RequestedLeaves.objects.filter(eid_id=emp.eid)
+                req_leaves.append(ls)
+        elif user.user_role_id == 3:
+            req_leaves = RequestedLeaves.objects.all()
+        else:
+            employee = Employee.objects.get(user_id=user.id)
+            req_leaves = RequestedLeaves.objects.filter(eid=employee.eid).all()
         req = []
         app = []
         for rl in req_leaves:
+            rcby = None
             if Leaves.objects.filter(request=rl.request_id).exists():
                 lo = Leaves.objects.get(request=rl.request_id)
-                if lo.request.status != 'deleted':
+                if lo.request.status != 'deleted' and rl.status != 'approved' and rl.status != 'rejected':
                     app.append({
-                        "title": lo.request.reason,
+                        "title": f'{user.fname} - {lo.request.reason}',
+                        "reason": rl.reason,
                         "description": '',
                         "start": lo.request.request_date,
                         "end": lo.request.request_date + datetime.timedelta(days=lo.request.duration),
                         "leave_data": LeavesSerializer(lo).data,
                         "leave_req_data": RequestLeaveSerializer(lo.request),
                         "backgroundColor": "red" if lo.request.status == 'rejected'
-                        else 'green' if lo.request.status == 'approved' else 'blue '
+                        else 'green' if lo.request.status == 'approved' else 'blue'
+                        if rl.eid.user_id_id != user.id else "red",
+                        "applier": lo.request.eid.user_id_id
                     })
 
             else:
                 # req.append(RequestLeaveSerializer(rl).data)
-                if rl.status!='deleted':
+                if rl.status != 'deleted' and rl.status != 'approved' and rl.status != 'rejected':
                     req.append({
-                        "title": rl.reason,
+                        "title": f'{user.fname} - {rl.reason}',
+                        "reason": rl.reason,
                         "description": '',
                         "start": rl.request_date,
                         "end": rl.request_date + datetime.timedelta(days=rl.duration),
                         "leave_req_data": RequestLeaveSerializer(rl).data,
                         "leave_data": None,
-                        "backgroundColor": "blue"
+                        "backgroundColor": "blue" if rl.eid.user_id_id != user.id else "red",
+                        "applier": rl.eid.user_id_id
+
                     })
         leaves_record['requested'] = req
         leaves_record['approved'] = app
@@ -111,7 +127,7 @@ def request_leave(token, body):
         token = AuthToken.objects.get(token=token)
         employee = Employee.objects.get(user_id_id=token.users_id)
         date = datetime.datetime.strptime(body['start'], "%Y-%m-%d")
-        # print(body['start'], date)
+        print(body['start'], date)
         req_leave = RequestedLeaves(eid_id=employee.eid, status='requested', request_date=date,
                                     reason=body['reason'], duration=body['duration'])
         req_leave.save()
@@ -144,45 +160,6 @@ def request_leave(token, body):
     return response
 
 
-def approve_leaves(token, req_id, paid=False, duration=None):
-    try:
-        token = AuthToken.objects.get(token=token)
-        manager = Manager.objects.get(user_id=token.users)
-        lrs = RequestedLeaves.objects.get(request_id=req_id)
-        endtime = datetime.datetime.now() + datetime.timedelta(hours=duration * 24)
-        leavobj = Leaves(request_id=lrs.request_id, paid_unpaid=paid, approved_by=manager.id, end_date=str(endtime))
-        leavobj.save()
-        lrs.status = "approved"
-        if duration is not None:
-            lrs.duration = duration
-        lrs.save()
-        response = {
-            'status': True,
-            'message': f'''Leave approved for {lrs.duration} days'''
-        }
-
-    except Manager.DoesNotExist:
-        response = {
-            'status': False,
-            'message': 'You are not a manager',
-            'code': status.HTTP_400_BAD_REQUEST
-        }
-    except AuthToken.DoesNotExist:
-        response = {
-            'status': False,
-            'message': 'Invalid Token',
-            'code': status.HTTP_400_BAD_REQUEST
-        }
-    except RequestedLeaves.DoesNotExist:
-        response = {
-            'status': False,
-            'message': 'Invalid Leave Id',
-            'code': status.HTTP_400_BAD_REQUEST
-        }
-
-    return response
-
-
 def delete_leaves_requeste(token, id):
     try:
         token = AuthToken.objects.get(token=token)
@@ -209,5 +186,64 @@ def delete_leaves_requeste(token, id):
             'status': False,
             'message': 'Leave details not found',
             'code': 404
+        }
+    return response
+
+
+def get_leaves(token, request_id):
+    try:
+        token = AuthToken.objects.get(token=token)
+        emp = Employee.objects.get(user_id=token.users)
+        if token.users.id == 3:
+            lr = RequestLeaveSerializer(RequestedLeaves.objects.get(request_id=request_id)).data
+        elif token.users.id == 2:
+            lcs = RequestedLeaves.objects.get(request_id=request_id)
+            if lcs.eid.rep_manager_id == token.users:
+                lr = RequestLeaveSerializer(lcs).data
+            else:
+                lr = None
+        else:
+            lcs = RequestedLeaves.objects.get(request_id=request_id, eid=emp)
+            lr = RequestLeaveSerializer(lcs).data
+
+        if lr is None:
+            response = {
+                'status': False,
+                'message': "You are not manager of the employee",
+                'code': status.HTTP_401_UNAUTHORIZED
+            }
+        else:
+            response = {
+                'status': True,
+                'data': lr,
+                'code': status.HTTP_200_OK
+            }
+    except (AuthToken.DoesNotExist, Employee.DoesNotExist, RequestedLeaves.DoesNotExist,
+            Leaves.DoesNotExist) as e:
+        response = {
+            'status': False,
+            'message': 'Not found',
+            'code': status.HTTP_404_NOT_FOUND
+        }
+
+    return response
+
+
+def update_leave(token, body):
+    try:
+        token = AuthToken.objects.get(token=token)
+        ls = RequestedLeaves.objects.get(request_id=body['request_id'])
+        ls.status = body['status']
+        ls.save()
+        response = {
+            'status': True,
+            'message': "Leave request " + body['status'],
+            'code': status.HTTP_201_CREATED
+        }
+    except (AuthToken.DoesNotExist, RequestedLeaves.DoesNotExist) as e:
+        response = {
+            'status': False,
+            'message': 'Not found',
+            'code': status.HTTP_404_NOT_FOUND
         }
     return response

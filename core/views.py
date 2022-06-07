@@ -37,7 +37,8 @@ def logout(request):
         token = request.META['HTTP_AUTHORIZATION']
         response = services.logout(token)
         return Response(response, status=status.HTTP_202_ACCEPTED)
-    except Exception as e:
+    except KeyError as e:
+        print(e)
         response = {
             'status': False,
             'message': str(e)

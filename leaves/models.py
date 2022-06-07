@@ -7,8 +7,8 @@ from employee.models import *
 class RequestedLeaves(Model):
     request_id = AutoField(primary_key=True)
     eid = ForeignKey(Employee, on_delete=CASCADE)
-    status = TextField(max_length=15, blank=False, null=False, default='APPLIED')
-    request_date = DateTimeField(auto_now_add=True)
+    status = TextField(max_length=15, blank=False, null=False, default='requested')
+    request_date = DateTimeField(null=False, blank=False)
     reason = TextField(max_length=250, blank=True, null=True)
     duration = IntegerField(null=False, default=1)
 

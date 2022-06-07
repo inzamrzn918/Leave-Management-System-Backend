@@ -51,12 +51,48 @@ def request_leave(request):
         }
     return Response(response, status=response['code'])
 
+
 @api_view(['DELETE'])
 def delete_leave(request):
     try:
         token = request.META['HTTP_AUTHORIZATION']
         id = request.data.get("id")
         response = services.delete_leaves_requeste(token, id)
+    except KeyError as e:
+        response = {
+            'status': False,
+            'message': 'Invalid request parameter',
+            'code': status.HTTP_406_NOT_ACCEPTABLE
+
+        }
+    return Response(response, status=response['code'])
+
+
+@api_view(['GET'])
+def get_leaves(request, request_id):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        response = services.get_leaves(token, request_id)
+        response = {
+            'status': True,
+            'data': response,
+            'code': status.HTTP_200_OK
+        }
+    except KeyError as e:
+        response = {
+            'status': False,
+            'message': 'Invalid token, Key Error',
+            'code': status.HTTP_406_NOT_ACCEPTABLE
+        }
+    return Response(response, status=response['code'])
+
+
+@api_view(['PUT'])
+def update_leave(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        body = request.data
+        response = services.update_leave(token, body)
     except KeyError as e:
         response = {
             'status': False,
