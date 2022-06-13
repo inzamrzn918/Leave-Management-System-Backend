@@ -101,3 +101,34 @@ def update_leave(request):
 
         }
     return Response(response, status=response['code'])
+
+@api_view(['GET'])
+def get_types(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        response = services.get_types(token)
+    except KeyError as e:
+        response = {
+            'status': False,
+            'message': 'Invalid request parameter',
+            'code': status.HTTP_406_NOT_ACCEPTABLE
+
+        }
+    return Response(response, status=response['code'])
+
+
+@api_view(['POST'])
+def set_types(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        body = request.data
+        print(body)
+        response = services.set_types(token, body)
+    except KeyError as e:
+        response = {
+            'status': False,
+            'message': 'Invalid request parameter',
+            'code': status.HTTP_406_NOT_ACCEPTABLE
+
+        }
+    return Response(response, status=response['code'])

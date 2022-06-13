@@ -1,8 +1,16 @@
-# Create your models here.
 from django.db.models import *
 from core.models import *
 from employee.models import *
 
+
+class LeaveType(Model):
+    title = CharField(max_length=50, null=False, blank=False)
+    
+class UserLeaveCount(Model):
+    user = ForeignKey(Users, on_delete=CASCADE, null=False, blank=False)
+    leave_type = ForeignKey(LeaveType, on_delete=CASCADE, null=False,blank=False)
+    count = FloatField()
+    
 
 class RequestedLeaves(Model):
     request_id = AutoField(primary_key=True)
@@ -10,7 +18,8 @@ class RequestedLeaves(Model):
     status = TextField(max_length=15, blank=False, null=False, default='requested')
     request_date = DateTimeField(null=False, blank=False)
     reason = TextField(max_length=250, blank=True, null=True)
-    duration = IntegerField(null=False, default=1)
+    duration = FloatField(null=False, default=1)
+    leave_type = ForeignKey(LeaveType, on_delete=CASCADE, null=True)
 
 
 class Leaves(Model):

@@ -32,7 +32,7 @@ def get_leaves_by_token(token):
                         "reason": rl.reason,
                         "description": '',
                         "start": lo.request.request_date,
-                        "end": lo.request.request_date + datetime.timedelta(days=lo.request.duration),
+                        "end": lo.request.request_date + datetime.timedelta(days=lo.request.duration-1),
                         "leave_data": LeavesSerializer(lo).data,
                         "leave_req_data": RequestLeaveSerializer(lo.request),
                         "backgroundColor": "red" if lo.request.status == 'rejected'
@@ -49,7 +49,7 @@ def get_leaves_by_token(token):
                         "reason": rl.reason,
                         "description": '',
                         "start": rl.request_date,
-                        "end": rl.request_date + datetime.timedelta(days=rl.duration),
+                        "end": rl.request_date + datetime.timedelta(days=rl.duration-1),
                         "leave_req_data": RequestLeaveSerializer(rl).data,
                         "leave_data": None,
                         "backgroundColor": "blue" if rl.eid.user_id_id != user.id else "red",
@@ -127,16 +127,22 @@ def request_leave(token, body):
         token = AuthToken.objects.get(token=token)
         employee = Employee.objects.get(user_id_id=token.users_id)
         date = datetime.datetime.strptime(body['start'], "%Y-%m-%d")
-        print(body['start'], date)
-        req_leave = RequestedLeaves(eid_id=employee.eid, status='requested', request_date=date,
-                                    reason=body['reason'], duration=body['duration'])
-        req_leave.save()
+        if not RequestedLeaves.objects.filter(request_date=date, status='requested', eid = employee).exists():
+            req_leave = RequestedLeaves(eid_id=employee.eid, status='requested', request_date=date,
+                                        reason=body['reason'], duration=body['duration'])
+            req_leave.save()
 
-        response = {
-            'status': True,
-            'message': f'''Requested leave for {req_leave.duration} days on {req_leave.request_date}''',
-            'code': status.HTTP_201_CREATED
-        }
+            response = {
+                'status': True,
+                'message': f'''Requested leave for {req_leave.duration} days on {req_leave.request_date}''',
+                'code': status.HTTP_201_CREATED
+            }
+        else:
+            response = {
+                'status': False,
+                'message': 'You can not apply twich on same date',
+                'code': status.HTTP_404_NOT_FOUND
+            }
     except AuthToken.DoesNotExist:
         response = {
             'status': False,
@@ -153,9 +159,7 @@ def request_leave(token, body):
         response = {
             'status': False,
             'message': str(e),
-            'code': status.HTTP_400_BAD_REQUEST,
-            'body': body
-
+            'code': status.HTTP_400_BAD_REQUEST
         }
     return response
 
@@ -247,3 +251,74 @@ def update_leave(token, body):
             'code': status.HTTP_404_NOT_FOUND
         }
     return response
+
+def get_types(token):
+    try:
+        token = AuthToken.objects.get(token=token)
+        lt = LeaveType.objects.all()
+        lt = LeaveTypeSerializer(lt, many=True)
+        response = {
+            'status':True,
+            'message':'Success',
+            'data':lt.data,
+            'code':status.HTTP_200_OK
+        }
+    except Exception as e:
+        response = {
+            'status':False,
+            'code':status.HTTP_400_BAD_REQUEST,
+            'message':str(e)
+        }
+    return response
+
+
+def set_types(token, body):
+    try:
+        token = AuthToken.objects.get(token=token)
+        if not LeaveType.objects.filter(title=body['title']).exists():
+            lt = LeaveType(title=body['title'])
+            lt.save()
+            response = {
+                'status':True,
+                'message':'Saved Successfully',
+                'code':status.HTTP_200_OK
+            }
+        else:
+            response = {
+                'status':False,
+                'message':'Alredy Exist',
+                'code':status.HTTP_406_NOT_ACCEPTABLE
+            }
+    except Exception as e:
+        response = {
+            'status':False,
+            'code':status.HTTP_400_BAD_REQUEST,
+            'message':str(e)
+        }
+    return response
+
+def update_type(token, body):
+    try:
+        token = AuthToken.objects.get(token=token)
+        if LeaveType.objects.filter(body).exists():
+            lt = LeaveType.objects.get(body)
+            lt.title = body['title']
+            lt.save()
+            response = {
+                'status':True,
+                'message':'Updated Successfully',
+                'code':status.HTTP_200_OK
+            }
+        else:
+            response = {
+                'status':False,
+                'message':'Not Exist',
+                'code':status.HTTP_304_NOT_MODIFIED
+            }
+    except Exception as e:
+        response = {
+            'status':False,
+            'code':status.HTTP_400_BAD_REQUEST,
+            'message':str(e)
+        }
+    return response 
