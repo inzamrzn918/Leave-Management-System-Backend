@@ -19,3 +19,8 @@ class RequestLeaveSerializer(ModelSerializer):
     class Meta:
         model = RequestedLeaves
         fields = ['request_id', 'eid', 'status', 'request_date', 'reason', 'duration']
+        
+class LeaveTypeSerializer(ModelSerializer):
+    class Meta:
+        model = LeaveType
+        fields = '__all__'

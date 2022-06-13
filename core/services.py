@@ -8,6 +8,7 @@ from .models import Users, AuthToken, UserRole
 from django.contrib import auth
 from uuid import uuid4
 from .serializer import *
+from django.contrib.auth.password_validation import validate_password
 
 
 def login(username, password):
@@ -234,4 +235,24 @@ def get_user(user_info, token):
         }
     return response
 
+
+def val_password(token, password):
+    try:
+        token = AuthToken.objects.get(token=token)
+        # val = validate_password(password, user = token.users)
+        p = token.users.password
+        s = token.users.set_password(password)
+        response = {
+            'status': p==s,
+            'code':status.HTTP_200_OK,
+            'message':s
+        }
+    except Exception as e:
+        print(e)
+        response = {
+            'status':False,
+            'message':str(e),
+            'code':status.HTTP_400_BAD_REQUEST
+        }
+    return response
 

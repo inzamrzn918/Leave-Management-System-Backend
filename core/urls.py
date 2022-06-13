@@ -12,6 +12,7 @@ urlpatterns = [
     path('session_info', view=session_info),
     path('get_token_user', view=get_token_user),
     path('onboard', view=onboard),
-    path('get_user', view=get_user)
+    path('get_user', view=get_user),
+    path('password_validation', view=password_validation),
 
 ]

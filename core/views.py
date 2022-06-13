@@ -1,4 +1,5 @@
 from http.client import HTTPResponse
+from urllib import response
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -132,4 +133,17 @@ def get_user(request):
         }
     return Response(response, status=response['code'])
 
+@api_view(['POST'])
+def password_validation(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        password = request.data.get("password")
+        response = services.val_password(token, password)
+    except KeyError as e:
+        response = {
+            'status':False,
+            'message': str(e),
+            'code':status.HTTP_400_BAD_REQUEST
+        }
+    return Response(response, status=response['code']) 
 
