@@ -1,23 +1,26 @@
 from rest_framework import status
 from core.models import AuthToken, Users
+from leaves.models import LeaveType
 from .models import *
 from .serializer import *
 
 
 def onboard(token, data):
+    print(data.get('leave_count'))
     try:
 
         token = AuthToken.objects.get(token=token)
         admin = Users.objects.get(id=token.users_id)
         emp_user = Users.objects.get(username=data.get("username"))
+        leave_types = LeaveType.objects.all()    
         empl = Employee(user_id=emp_user, isManager=False, experiance=data.get("experiance"),
                         blood_group=data.get("blood_group"), address=data.get("address"),
                         contact_no=data.get("contactno")
                         , dob=data.get("dob"), marital_status=data.get("marital_status"),
                         dept_id=data.get("department"),
-                        rep_manager_id_id=data.get("manager"), total_leaves=21, remaining_leaves=21, onborded_by=admin)
+                        rep_manager_id_id=data.get("manager"), total_leaves=21,
+                        ctc=int(float(data.get('ctc'))*100000),onborded_by=admin)
         empl.save()
-
         response = {
             'status': True,
             'code': status.HTTP_201_CREATED,

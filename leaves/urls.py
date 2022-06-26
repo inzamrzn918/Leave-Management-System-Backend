@@ -9,6 +9,7 @@ urlpatterns = [
     path('update', view=update_leave),
     path('type', view=get_types),
     path('add_leave_type', view=set_types),
+    path('balance', view=get_leave_balance),
 
 
 ]
