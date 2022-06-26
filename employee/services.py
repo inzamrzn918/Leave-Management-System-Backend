@@ -181,8 +181,10 @@ def update_employee(token, body):
                         value.save()
 
                 if key == 'rep_manager_id':
-                    if Manager.objects.filter(mid=value['mid']).exists():
-                        value = Manager.objects.get(mid=value['mid'])
+                    print(key,value)
+                    # break
+                    if Manager.objects.filter(mid=value).exists():
+                        value = Manager.objects.get(mid=value)
 
                 if key == 'dept':
                     if Department.objects.filter(dept_id=value).exists():
@@ -325,3 +327,30 @@ def get_hardware(token, id=None):
         }
 
     return response
+
+
+def make_manager(token, data):
+    try:
+        token = AuthToken.objects.get(token=token)
+        user = Users.objects.get(id=data['user_id'])
+        if Manager.objects.filter(user_id=user).exists():
+            response = {
+                'status': False,
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': f" {user.fname} {user.lname} is already a manager"
+            } 
+        else:
+            manager = Manager(user_id = user)
+            manager.save()
+            response = {
+                'status': True,
+                'code': status.HTTP_201_CREATED,
+                'message': f" {user.fname} {user.lname} become manager now"
+            } 
+    except Exception as e:
+        response = {
+            'status': False,
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        }   
+    return response 

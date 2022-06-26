@@ -1,3 +1,4 @@
+from urllib import response
 from django.shortcuts import render
 
 # Create your views here.
@@ -129,5 +130,18 @@ def get_hardware(request):
             'status': False,
             'code': status.HTTP_406_NOT_ACCEPTABLE,
             'message': 'Key Error'
+        }
+    return Response(response, status=response['code'])
+
+@api_view(['POST'])
+def make_manager(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        response = services.make_manager(token, request.data)
+    except Exception as e:
+        response = {
+            'status':False,
+            'code':status.HTTP_400_BAD_REQUEST,
+            'message':str(e)
         }
     return Response(response, status=response['code'])

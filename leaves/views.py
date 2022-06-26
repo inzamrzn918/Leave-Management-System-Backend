@@ -147,3 +147,17 @@ def get_leave_balance(request):
 
         }
     return Response(response, status=response['code'])
+
+@api_view(['GET'])
+def get_all_leaves(request):
+    try:
+        token = request.META['HTTP_AUTHORIZATION']
+        response = services.get_all_leaves(token)
+    except KeyError as e:
+        response = {
+            'status': False,
+            'message': 'Invalid request parameter',
+            'code': status.HTTP_406_NOT_ACCEPTABLE
+
+        }
+    return Response(response, status=response['code'])

@@ -28,7 +28,7 @@ class Employee(Model):
     contact_no = TextField(max_length=14, blank=True, null=True)
     dob = TextField(max_length=12, blank=True, null=True)
     kanaka_id = TextField(max_length=25, blank=True, null=True)
-    total_leaves = IntegerField(null=False, default=21)
+    total_leaves = FloatField(null=False, default=21)
     # remaining_leaves = IntegerField(null=False, default=21)
     ctc = IntegerField(default=0)
     onborded_by = ForeignKey(Users, on_delete=SET_NULL, null=True, related_name="created_by")

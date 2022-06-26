@@ -2,6 +2,7 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
+    path('', view=get_all_leaves),
     path('<int:request_id>', view=get_leaves),
     path('my_leaves', view=my_leaves),
     path('apply', view=request_leave),

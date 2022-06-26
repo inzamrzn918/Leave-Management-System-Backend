@@ -180,7 +180,10 @@ def delete_leaves_requeste(token, id):
         else:
             lr = RequestedLeaves.objects.get(request_id=id)
         lr.status = 'deleted'
+        emp = lr.eid
+        emp.total_leaves += lr.duration
         lr.save()
+        emp.save()
         response = {
             'status': True,
             'message': 'Deleted!',
@@ -244,8 +247,13 @@ def update_leave(token, body):
     try:
         token = AuthToken.objects.get(token=token)
         ls = RequestedLeaves.objects.get(request_id=body['request_id'])
+        emp = ls.eid
+
         ls.status = body['status']
         ls.save()
+        if body['status']=='rejected':
+            emp.total_leaves +=ls.duration
+            emp.save()
         response = {
             'status': True,
             'message': "Leave request " + body['status'],
@@ -278,6 +286,52 @@ def get_types(token):
         }
     return response
 
+def get_all_leaves(token):
+    try:
+        leaves_record = {}
+        token = AuthToken.objects.get(token=token)
+        user = Users.objects.get(id=token.users.id)
+        req_leaves = RequestedLeaves.objects.all()
+        req = []
+        for rl in req_leaves:
+
+            req.append({
+                "title": f'{user.fname} - {rl.reason}',
+                "reason": rl.reason,
+                "description": '',
+                "start": rl.request_date,
+                "end": rl.request_date + datetime.timedelta(days=rl.duration-1),
+                "leave_req_data": RequestLeaveSerializer(rl).data,
+                "leave_data": None,
+                "backgroundColor": "blue" if rl.eid.user_id_id != user.id else "red",
+                "applier": rl.eid.user_id_id
+            })
+        leaves_record['requested'] = req
+        response = {
+            'status': True,
+            'data': leaves_record,
+            'code':status.HTTP_200_OK
+        }
+
+    except AuthToken.DoesNotExist as e:
+        response = {
+            'status': False,
+            'message': 'Invalid Token',
+            'code':status.HTTP_401_UNAUTHORIZED
+        }
+    except Users.DoesNotExist as f:
+        response = {
+            'status': False,
+            'message': 'User not found',
+            'code':status.HTTP_404_NOT_FOUND
+        }
+    except Employee.DoesNotExist as g:
+        response = {
+            'status': False,
+            'message': 'Not an Employee',
+            'code':status.HTTP_404_NOT_FOUND
+        }
+    return response
 
 def set_types(token, body):
     try:
