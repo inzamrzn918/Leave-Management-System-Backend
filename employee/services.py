@@ -1,23 +1,26 @@
 from rest_framework import status
 from core.models import AuthToken, Users
+from leaves.models import LeaveType
 from .models import *
 from .serializer import *
 
 
 def onboard(token, data):
+    print(data.get('leave_count'))
     try:
 
         token = AuthToken.objects.get(token=token)
         admin = Users.objects.get(id=token.users_id)
         emp_user = Users.objects.get(username=data.get("username"))
+        leave_types = LeaveType.objects.all()    
         empl = Employee(user_id=emp_user, isManager=False, experiance=data.get("experiance"),
                         blood_group=data.get("blood_group"), address=data.get("address"),
                         contact_no=data.get("contactno")
                         , dob=data.get("dob"), marital_status=data.get("marital_status"),
                         dept_id=data.get("department"),
-                        rep_manager_id_id=data.get("manager"), total_leaves=21, remaining_leaves=21, onborded_by=admin)
+                        rep_manager_id_id=data.get("manager"), total_leaves=21,
+                        ctc=int(float(data.get('ctc'))*100000),onborded_by=admin)
         empl.save()
-
         response = {
             'status': True,
             'code': status.HTTP_201_CREATED,
@@ -178,8 +181,10 @@ def update_employee(token, body):
                         value.save()
 
                 if key == 'rep_manager_id':
-                    if Manager.objects.filter(mid=value['mid']).exists():
-                        value = Manager.objects.get(mid=value['mid'])
+                    print(key,value)
+                    # break
+                    if Manager.objects.filter(mid=value).exists():
+                        value = Manager.objects.get(mid=value)
 
                 if key == 'dept':
                     if Department.objects.filter(dept_id=value).exists():
@@ -322,3 +327,30 @@ def get_hardware(token, id=None):
         }
 
     return response
+
+
+def make_manager(token, data):
+    try:
+        token = AuthToken.objects.get(token=token)
+        user = Users.objects.get(id=data['user_id'])
+        if Manager.objects.filter(user_id=user).exists():
+            response = {
+                'status': False,
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': f" {user.fname} {user.lname} is already a manager"
+            } 
+        else:
+            manager = Manager(user_id = user)
+            manager.save()
+            response = {
+                'status': True,
+                'code': status.HTTP_201_CREATED,
+                'message': f" {user.fname} {user.lname} become manager now"
+            } 
+    except Exception as e:
+        response = {
+            'status': False,
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        }   
+    return response 

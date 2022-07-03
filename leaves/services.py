@@ -1,3 +1,5 @@
+from datetime import timezone
+from itertools import count
 from rest_framework import status
 
 from .serializer import *
@@ -26,7 +28,7 @@ def get_leaves_by_token(token):
             rcby = None
             if Leaves.objects.filter(request=rl.request_id).exists():
                 lo = Leaves.objects.get(request=rl.request_id)
-                if lo.request.status != 'deleted' and rl.status != 'approved' and rl.status != 'rejected':
+                if lo.request.status != 'deleted' and rl.status != 'approved' and rl.status != 'rejected' and  (rl.request_date>=datetime.datetime.now(timezone.utc)):
                     app.append({
                         "title": f'{user.fname} - {lo.request.reason}',
                         "reason": rl.reason,
@@ -43,7 +45,7 @@ def get_leaves_by_token(token):
 
             else:
                 # req.append(RequestLeaveSerializer(rl).data)
-                if rl.status != 'deleted' and rl.status != 'approved' and rl.status != 'rejected':
+                if rl.status != 'deleted' and rl.status != 'approved' and rl.status != 'rejected'  and (rl.request_date>=datetime.datetime.now(timezone.utc)):
                     req.append({
                         "title": f'{user.fname} - {rl.reason}',
                         "reason": rl.reason,
@@ -127,10 +129,14 @@ def request_leave(token, body):
         token = AuthToken.objects.get(token=token)
         employee = Employee.objects.get(user_id_id=token.users_id)
         date = datetime.datetime.strptime(body['start'], "%Y-%m-%d")
+        print(body['type'])
         if not RequestedLeaves.objects.filter(request_date=date, status='requested', eid = employee).exists():
             req_leave = RequestedLeaves(eid_id=employee.eid, status='requested', request_date=date,
-                                        reason=body['reason'], duration=body['duration'])
+                                        reason=body['reason'], duration=body['duration'], leave_type_id=body['type'])
+            employee.total_leaves -= body['duration']
+                
             req_leave.save()
+            employee.save()
 
             response = {
                 'status': True,
@@ -156,6 +162,7 @@ def request_leave(token, body):
             'code': status.HTTP_404_NOT_FOUND
         }
     except Exception as e:
+        print(body)
         response = {
             'status': False,
             'message': str(e),
@@ -173,7 +180,10 @@ def delete_leaves_requeste(token, id):
         else:
             lr = RequestedLeaves.objects.get(request_id=id)
         lr.status = 'deleted'
+        emp = lr.eid
+        emp.total_leaves += lr.duration
         lr.save()
+        emp.save()
         response = {
             'status': True,
             'message': 'Deleted!',
@@ -237,8 +247,13 @@ def update_leave(token, body):
     try:
         token = AuthToken.objects.get(token=token)
         ls = RequestedLeaves.objects.get(request_id=body['request_id'])
+        emp = ls.eid
+
         ls.status = body['status']
         ls.save()
+        if body['status']=='rejected':
+            emp.total_leaves +=ls.duration
+            emp.save()
         response = {
             'status': True,
             'message': "Leave request " + body['status'],
@@ -271,12 +286,58 @@ def get_types(token):
         }
     return response
 
+def get_all_leaves(token):
+    try:
+        leaves_record = {}
+        token = AuthToken.objects.get(token=token)
+        user = Users.objects.get(id=token.users.id)
+        req_leaves = RequestedLeaves.objects.all()
+        req = []
+        for rl in req_leaves:
+
+            req.append({
+                "title": f'{user.fname} - {rl.reason}',
+                "reason": rl.reason,
+                "description": '',
+                "start": rl.request_date,
+                "end": rl.request_date + datetime.timedelta(days=rl.duration-1),
+                "leave_req_data": RequestLeaveSerializer(rl).data,
+                "leave_data": None,
+                "backgroundColor": "blue" if rl.eid.user_id_id != user.id else "red",
+                "applier": rl.eid.user_id_id
+            })
+        leaves_record['requested'] = req
+        response = {
+            'status': True,
+            'data': leaves_record,
+            'code':status.HTTP_200_OK
+        }
+
+    except AuthToken.DoesNotExist as e:
+        response = {
+            'status': False,
+            'message': 'Invalid Token',
+            'code':status.HTTP_401_UNAUTHORIZED
+        }
+    except Users.DoesNotExist as f:
+        response = {
+            'status': False,
+            'message': 'User not found',
+            'code':status.HTTP_404_NOT_FOUND
+        }
+    except Employee.DoesNotExist as g:
+        response = {
+            'status': False,
+            'message': 'Not an Employee',
+            'code':status.HTTP_404_NOT_FOUND
+        }
+    return response
 
 def set_types(token, body):
     try:
         token = AuthToken.objects.get(token=token)
         if not LeaveType.objects.filter(title=body['title']).exists():
-            lt = LeaveType(title=body['title'])
+            lt = LeaveType(title=body['title'], max_amount=body['count'])
             lt.save()
             response = {
                 'status':True,
@@ -322,3 +383,26 @@ def update_type(token, body):
             'message':str(e)
         }
     return response 
+
+def get_leave_balance(token):
+    try:
+        token = AuthToken.objects.get(token=token)
+        employee = Employee.objects.get(user_id=token.users)
+        lr = RequestedLeaves.objects.filter(status='requested',eid=employee)
+        lb = employee.total_leaves
+        for lrc in lr:
+            lb -= lrc.leave_type.max_amount
+        response = {
+            'status':True,
+            'code':status.HTTP_200_OK,
+            'lb':lb,
+            'cpl':employee.ctc/365
+        }
+    
+    except Exception as e:
+        response = {
+            'status':False,
+            'code':status.HTTP_400_BAD_REQUEST,
+            'message':str(e)
+        }
+    return response

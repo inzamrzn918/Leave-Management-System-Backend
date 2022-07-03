@@ -5,11 +5,12 @@ from employee.models import *
 
 class LeaveType(Model):
     title = CharField(max_length=50, null=False, blank=False)
+    max_amount = IntegerField(default=0, null=False, blank=False)
     
-class UserLeaveCount(Model):
-    user = ForeignKey(Users, on_delete=CASCADE, null=False, blank=False)
-    leave_type = ForeignKey(LeaveType, on_delete=CASCADE, null=False,blank=False)
-    count = FloatField()
+# class UserLeaveCount(Model):
+#     user = ForeignKey(Users, on_delete=CASCADE, null=False, blank=False)
+#     leave_type = ForeignKey(LeaveType, on_delete=CASCADE, null=False,blank=False)
+#     count = FloatField()
     
 
 class RequestedLeaves(Model):
